@@ -1,0 +1,1 @@
+{"type":"minecraft:crafting_shaped","pattern":["IRI","RGR"," I "],"key":{"I":{"item":"minecraft:iron_ingot"},"R":{"item":"minecraft:redstone"},"G":{"item":"minecraft:glass_pane"}},"result":{"item":"metrolasttunnel:dosimeter"}}
