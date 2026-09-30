@@ -6,13 +6,14 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public class DosimeterItem extends Item {
     public DosimeterItem(Properties properties) { super(properties); }
 
     @Override
-    public InteractionResultHolder<Item> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         if (!level.isClientSide) {
             int radiation = RadiationSystem.getRadiation(player);
             String state = radiation < 20 ? "чисто" : radiation < 50 ? "повышено" : radiation < 100 ? "опасно" : "критически опасно";
