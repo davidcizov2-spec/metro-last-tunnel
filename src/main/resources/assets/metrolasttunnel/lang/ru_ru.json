@@ -4,5 +4,9 @@
   "item.metrolasttunnel.dosimeter": "Дозиметр",
   "item.metrolasttunnel.flashlight": "Фонарик",
   "item.metrolasttunnel.gas_mask": "Противогаз",
-  "block.metrolasttunnel.radioactive_stone": "Радиоактивная порода"
+  "block.metrolasttunnel.radioactive_stone": "Радиоактивная порода",
+  "item.metrolasttunnel.medkit": "Аптечка",
+  "block.metrolasttunnel.metro_concrete": "Метро-бетон",
+  "block.metrolasttunnel.rusted_metal": "Ржавый металл",
+  "block.metrolasttunnel.metro_lamp": "Лампа метро"
 }
