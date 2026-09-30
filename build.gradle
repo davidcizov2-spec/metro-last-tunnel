@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.david'
-version = '0.1.0'
+version = '0.3.0'
 base { archivesName = 'metro-last-tunnel' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -30,9 +30,9 @@ tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 
 jar {
     manifest { attributes([
-        'Specification-Title': 'Metro: Last Tunnel',
+        'Specification-Title': 'Metro: Last Tunnel — Medkit',
         'Specification-Vendor': 'David',
-        'Specification-Version': '0.1',
+        'Specification-Version': '0.3',
         'Implementation-Title': project.name,
         'Implementation-Version': project.version
     ]) }

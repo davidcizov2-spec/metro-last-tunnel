@@ -1,12 +1,1 @@
-{
-  "item.metrolasttunnel.filter": "Gas Mask Filter",
-  "item.metrolasttunnel.battery": "Battery",
-  "item.metrolasttunnel.dosimeter": "Dosimeter",
-  "item.metrolasttunnel.flashlight": "Flashlight",
-  "item.metrolasttunnel.medkit": "Medkit",
-  "item.metrolasttunnel.gas_mask": "Gas Mask",
-  "block.metrolasttunnel.radioactive_stone": "Radioactive Rock",
-  "block.metrolasttunnel.metro_concrete": "Metro Concrete",
-  "block.metrolasttunnel.rusted_metal": "Rusted Metal",
-  "block.metrolasttunnel.metro_lamp": "Metro Lamp"
-}
+{"item.metrolasttunnel.medkit":"Medkit"}\n

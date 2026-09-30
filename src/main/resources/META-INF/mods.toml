@@ -4,10 +4,10 @@ license="MIT"
 
 [[mods]]
 modId="metrolasttunnel"
-version="0.2.0"
-displayName="Metro: Last Tunnel"
+version="0.3.0"
+displayName="Metro: Last Tunnel — Medkit"
 authors="David"
-description='''Постапокалиптический мод для Minecraft 1.20.1: радиация, дозиметр, противогаз, фильтры, батарейки и фонарик.'''
+description='''Аптечка для Minecraft 1.20.1 Forge. Использование восстанавливает 3 сердца здоровья.'''
 
 [[dependencies.metrolasttunnel]]
 modId="forge"

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["RWR", "PDP", "WWW"],
+  "key": {
+    "R": {"item": "minecraft:red_wool"},
+    "W": {"item": "minecraft:white_wool"},
+    "P": {"item": "minecraft:paper"},
+    "D": {"item": "minecraft:red_dye"}
+  },
+  "result": {"item": "metrolasttunnel:medkit", "count": 1}
+}
