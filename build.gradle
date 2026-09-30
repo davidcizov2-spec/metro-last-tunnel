@@ -1,0 +1,39 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+group = 'com.david'
+version = '0.1.0'
+base { archivesName = 'metro-last-tunnel' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods { metrolasttunnel { source sourceSets.main } }
+        }
+        client { args '--username', 'DevPlayer' }
+        server { args '--nogui' }
+    }
+}
+
+repositories { maven { url = 'https://maven.minecraftforge.net' } }
+dependencies { minecraft 'net.minecraftforge:forge:1.20.1-47.4.0' }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+jar {
+    manifest { attributes([
+        'Specification-Title': 'Metro: Last Tunnel',
+        'Specification-Vendor': 'David',
+        'Specification-Version': '0.1',
+        'Implementation-Title': project.name,
+        'Implementation-Version': project.version
+    ]) }
+}
