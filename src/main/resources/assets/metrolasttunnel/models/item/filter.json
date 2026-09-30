@@ -1,1 +1,1 @@
-{"parent":"item/generated","textures":{"layer0":"metrolasttunnel:item/filter"}}
+{"textures":{"tex":"metrolasttunnel:item/filter"},"elements":[{"from":[5,3,5],"to":[11,13,11],"faces":{"north":{"texture":"#tex"},"south":{"texture":"#tex"},"east":{"texture":"#tex"},"west":{"texture":"#tex"},"up":{"texture":"#tex"},"down":{"texture":"#tex"}}},{"from":[4,5,6],"to":[12,11,10],"faces":{"north":{"texture":"#tex"},"south":{"texture":"#tex"},"east":{"texture":"#tex"},"west":{"texture":"#tex"},"up":{"texture":"#tex"},"down":{"texture":"#tex"}}}]}
