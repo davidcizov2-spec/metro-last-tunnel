@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="metrolasttunnel"
+version="0.1.0"
+displayName="Metro: Last Tunnel"
+authors="David"
+description='''Постапокалиптический мод для Minecraft 1.20.1: радиация, дозиметр, противогаз, фильтры, батарейки и фонарик.'''
+
+[[dependencies.metrolasttunnel]]
+modId="forge"
+type="required"
+versionRange="[47.0,48.0)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.metrolasttunnel]]
+modId="minecraft"
+type="required"
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"
