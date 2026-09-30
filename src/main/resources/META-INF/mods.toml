@@ -11,14 +11,14 @@ description='''Постапокалиптический мод для Minecraft 
 
 [[dependencies.metrolasttunnel]]
 modId="forge"
-type="required"
+mandatory=true
 versionRange="[47.0,48.0)"
 ordering="NONE"
 side="BOTH"
 
 [[dependencies.metrolasttunnel]]
 modId="minecraft"
-type="required"
+mandatory=true
 versionRange="[1.20.1,1.20.2)"
 ordering="NONE"
 side="BOTH"
