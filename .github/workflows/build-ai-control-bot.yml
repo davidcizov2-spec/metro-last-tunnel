@@ -1,0 +1,27 @@
+name: Build AI Control Bot
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ai-control-bot/**'
+      - '.github/workflows/build-ai-control-bot.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-control-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: gradle build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aicontrolbot-1.0.0
+          path: ai-control-bot/build/libs/*.jar
