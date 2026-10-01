@@ -4,21 +4,35 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
-import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
-import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.PickaxeItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.phys.Vec3;
 
 public class ControlBotEntity extends PathfinderMob {
     private enum BrainState {
@@ -28,20 +42,23 @@ public class ControlBotEntity extends PathfinderMob {
         RETURN_HOME
     }
 
+    private final SimpleContainer botInventory = new SimpleContainer(36);
+
     private int inputTicks;
     private float forward;
     private float strafe;
 
     private BrainState state = BrainState.GATHER_WOOD;
     private BlockPos homeOrigin;
-    private int wood = 0;
-    private int stone = 0;
-    private int ores = 0;
-    private int buildIndex = 0;
-    private int mineProgress = 0;
-    private int idleTicks = 0;
-    private int statusTicks = 0;
+    private int buildIndex;
+    private int mineProgress;
+    private int idleTicks;
+    private int statusTicks;
     private String lastStatus = "";
+
+    private BlockPos breakingTarget;
+    private int breakingTicks;
+    private int breakingRequired;
 
     protected ControlBotEntity(net.minecraft.world.entity.EntityType<? extends PathfinderMob> type,
                                net.minecraft.world.level.Level level) {
@@ -67,6 +84,16 @@ public class ControlBotEntity extends PathfinderMob {
 
         targetSelector.addGoal(1, new HurtByTargetGoal(this));
         targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Zombie.class, true));
+    }
+
+    public SimpleContainer getBotInventory() {
+        return botInventory;
+    }
+
+    public void openInventory(ServerPlayer player) {
+        player.openMenu(new SimpleMenuProvider(
+                (id, inventory, ignored) -> ChestMenu.sixRows(id, inventory, botInventory),
+                Component.literal("ChatBot — инвентарь")));
     }
 
     public void setInput(float forward, float strafe, int ticks) {
@@ -106,12 +133,22 @@ public class ControlBotEntity extends PathfinderMob {
             statusTicks--;
         }
 
+        if (tickCount % 5 == 0) {
+            collectNearbyItems();
+            equipArmorFromInventory();
+        }
+
         if (tickCount % 10 == 0) {
             makeZombiesReact();
             recoverHealth();
         }
 
+        if (breakingTarget != null) {
+            tickBreaking();
+        }
+
         if (getTarget() != null && getTarget().isAlive()) {
+            cancelBreaking();
             setStatus("Сражаюсь с зомби");
             return;
         }
@@ -136,7 +173,48 @@ public class ControlBotEntity extends PathfinderMob {
 
         if (len > 0.001D) {
             move(net.minecraft.world.entity.MoverType.SELF,
-                    new net.minecraft.world.phys.Vec3(x / len * 0.09D, 0, z / len * 0.09D));
+                    new Vec3(x / len * 0.09D, 0, z / len * 0.09D));
+        }
+    }
+
+    private void collectNearbyItems() {
+        for (ItemEntity itemEntity : level().getEntitiesOfClass(
+                ItemEntity.class,
+                getBoundingBox().inflate(3.0D))) {
+
+            if (!itemEntity.isAlive() || itemEntity.getItem().isEmpty()) {
+                continue;
+            }
+
+            ItemStack remaining = botInventory.addItem(itemEntity.getItem().copy());
+            itemEntity.setItem(remaining);
+
+            if (remaining.isEmpty()) {
+                itemEntity.discard();
+            }
+
+            if (!remaining.equals(itemEntity.getItem())) {
+                setStatus("Подбираю предметы");
+            }
+        }
+    }
+
+    private void equipArmorFromInventory() {
+        for (int i = 0; i < botInventory.getContainerSize(); i++) {
+            ItemStack stack = botInventory.getItem(i);
+
+            if (!(stack.getItem() instanceof ArmorItem armor)) {
+                continue;
+            }
+
+            EquipmentSlot slot = armor.getEquipmentSlot();
+            ItemStack equipped = getItemBySlot(slot);
+
+            if (equipped.isEmpty()) {
+                botInventory.setItem(i, ItemStack.EMPTY);
+                setItemSlot(slot, stack.split(1));
+                setStatus("Надеваю броню");
+            }
         }
     }
 
@@ -151,7 +229,7 @@ public class ControlBotEntity extends PathfinderMob {
 
             double distance = distanceToSqr(zombie);
 
-            if (distance < 16.0D || zombie.getTarget() == null) {
+            if (distance < 196.0D) {
                 zombie.setTarget(this);
             }
 
@@ -173,6 +251,8 @@ public class ControlBotEntity extends PathfinderMob {
             homeOrigin = blockPosition().offset(3, 0, 3);
         }
 
+        prepareWoodMaterials();
+
         switch (state) {
             case GATHER_WOOD -> gatherWood();
             case BUILD_HOME -> buildHome();
@@ -182,7 +262,10 @@ public class ControlBotEntity extends PathfinderMob {
     }
 
     private void gatherWood() {
-        if (wood >= 12) {
+        int logs = countItem(Items.OAK_LOG) + countItem(Items.BIRCH_LOG)
+                + countItem(Items.SPRUCE_LOG) + countItem(Items.JUNGLE_LOG);
+
+        if (countPlanks() >= 24 || logs >= 8) {
             state = BrainState.BUILD_HOME;
             buildIndex = 0;
             getNavigation().stop();
@@ -190,7 +273,7 @@ public class ControlBotEntity extends PathfinderMob {
             return;
         }
 
-        BlockPos log = findNearestLog(14);
+        BlockPos log = findNearestLog(16);
 
         if (log == null) {
             idleTicks++;
@@ -207,15 +290,8 @@ public class ControlBotEntity extends PathfinderMob {
         setStatus("Добываю дерево");
         moveNear(log);
 
-        if (distanceToSqr(log.getX() + 0.5D, log.getY() + 0.5D, log.getZ() + 0.5D) < 7.0D) {
-            BlockState blockState = level().getBlockState(log);
-            if (blockState.is(BlockTags.LOGS)) {
-                Block block = blockState.getBlock();
-                if (level().destroyBlock(log, false, this)) {
-                    wood++;
-                    block.popResource(level(), log, block.asItem().getDefaultInstance());
-                }
-            }
+        if (canReachBlock(log)) {
+            startOrContinueBreaking(log);
         }
     }
 
@@ -225,9 +301,9 @@ public class ControlBotEntity extends PathfinderMob {
         final int width = 7;
         final int depth = 7;
         final int height = 5;
+        final int total = width * depth * height;
 
-        int total = width * depth * height;
-        if (buildIndex < total) {
+        while (buildIndex < total) {
             int index = buildIndex++;
             int x = index % width;
             int z = (index / width) % depth;
@@ -236,22 +312,23 @@ public class ControlBotEntity extends PathfinderMob {
             boolean boundary = x == 0 || x == width - 1 || z == 0 || z == depth - 1 || y == height - 1;
             boolean doorOpening = z == 0 && x == 3 && y < 2;
 
-            if (boundary && !doorOpening) {
-                BlockPos p = homeOrigin.offset(x, y, z);
+            if (!boundary || doorOpening) {
+                continue;
+            }
 
-                if (level().isEmptyBlock(p)) {
-                    level().setBlock(p, Blocks.OAK_PLANKS.defaultBlockState(), 3);
-                    wood = Math.max(0, wood - 1);
-                } else if (level().getBlockState(p).is(BlockTags.LOGS)) {
-                    level().destroyBlock(p, false, this);
-                    level().setBlock(p, Blocks.OAK_PLANKS.defaultBlockState(), 3);
+            BlockPos p = homeOrigin.offset(x, y, z);
+
+            if (level().isEmptyBlock(p)) {
+                if (!takeItem(Items.OAK_PLANKS, 1)) {
+                    state = BrainState.GATHER_WOOD;
+                    setStatus("Не хватает досок");
+                    buildIndex = Math.max(0, buildIndex - 1);
+                    return;
                 }
+
+                level().setBlock(p, Blocks.OAK_PLANKS.defaultBlockState(), 3);
             }
 
-            if (wood <= 0 && buildIndex < total) {
-                state = BrainState.GATHER_WOOD;
-                setStatus("Нужно ещё дерево");
-            }
             return;
         }
 
@@ -262,7 +339,7 @@ public class ControlBotEntity extends PathfinderMob {
 
         state = BrainState.MINE;
         mineProgress = 0;
-        getNavigation().stop();
+        breakingTarget = null;
         setStatus("Иду в шахту");
     }
 
@@ -275,38 +352,21 @@ public class ControlBotEntity extends PathfinderMob {
 
         BlockPos target = homeOrigin.offset(3 + mineProgress, 0, 3);
 
-        if (mineProgress % 5 == 0) {
-            BlockPos ore = findNearestOre(7);
-            if (ore != null) {
-                setStatus("Добываю руду");
-                moveNear(ore);
-
-                if (distanceToSqr(ore.getX() + 0.5D, ore.getY() + 0.5D, ore.getZ() + 0.5D) < 8.0D) {
-                    if (level().destroyBlock(ore, false, this)) {
-                        ores++;
-                    }
-                }
-                return;
-            }
+        BlockPos ore = findNearestOre(8);
+        if (ore != null && canReachBlock(ore)) {
+            setStatus("Добываю руду");
+            startOrContinueBreaking(ore);
+            return;
         }
 
         setStatus("Копаю шахту");
         moveNear(target);
 
-        if (distanceToSqr(target.getX() + 0.5D, target.getY() + 0.5D, target.getZ() + 0.5D) < 10.0D) {
-            BlockState feet = level().getBlockState(target);
-            BlockState head = level().getBlockState(target.above());
+        if (canReachBlock(target)) {
+            startOrContinueBreaking(target);
+        }
 
-            if (!feet.isAir()) {
-                if (level().destroyBlock(target, false, this)) {
-                    stone++;
-                }
-            }
-
-            if (!head.isAir() && !head.is(BlockTags.LOGS)) {
-                level().destroyBlock(target.above(), false, this);
-            }
-
+        if (level().getBlockState(target).isAir() && level().getBlockState(target.above()).isAir()) {
             mineProgress++;
         }
     }
@@ -323,13 +383,48 @@ public class ControlBotEntity extends PathfinderMob {
         }
     }
 
+    private void prepareWoodMaterials() {
+        int logs = countItem(Items.OAK_LOG) + countItem(Items.BIRCH_LOG)
+                + countItem(Items.SPRUCE_LOG) + countItem(Items.JUNGLE_LOG);
+
+        if (logs > 0 && countPlanks() < 32) {
+            int converted = Math.min(logs, 8);
+
+            for (int i = 0; i < botInventory.getContainerSize() && converted > 0; i++) {
+                ItemStack stack = botInventory.getItem(i);
+                Item item = stack.getItem();
+
+                if (item == Items.OAK_LOG || item == Items.BIRCH_LOG
+                        || item == Items.SPRUCE_LOG || item == Items.JUNGLE_LOG) {
+                    int amount = Math.min(converted, stack.getCount());
+                    stack.shrink(amount);
+                    botInventory.setItem(i, stack);
+                    botInventory.addItem(new ItemStack(Items.OAK_PLANKS, amount * 4));
+                    converted -= amount;
+                }
+            }
+        }
+
+        if (countPlanks() >= 8 && !hasItem(Items.WOODEN_PICKAXE)) {
+            if (takeItem(Items.OAK_PLANKS, 5)) {
+                botInventory.addItem(new ItemStack(Items.WOODEN_PICKAXE));
+            }
+        }
+
+        if (countPlanks() >= 5 && !hasItem(Items.WOODEN_AXE)) {
+            if (takeItem(Items.OAK_PLANKS, 3)) {
+                botInventory.addItem(new ItemStack(Items.WOODEN_AXE));
+            }
+        }
+    }
+
     private BlockPos findNearestLog(int radius) {
         BlockPos center = blockPosition();
         BlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
 
         for (int x = -radius; x <= radius; x++) {
-            for (int y = -4; y <= 7; y++) {
+            for (int y = -4; y <= 10; y++) {
                 for (int z = -radius; z <= radius; z++) {
                     BlockPos p = center.offset(x, y, z);
                     if (!level().hasChunkAt(p)) {
@@ -356,7 +451,7 @@ public class ControlBotEntity extends PathfinderMob {
         double bestDistance = Double.MAX_VALUE;
 
         for (int x = -radius; x <= radius; x++) {
-            for (int y = -5; y <= 5; y++) {
+            for (int y = -8; y <= 6; y++) {
                 for (int z = -radius; z <= radius; z++) {
                     BlockPos p = center.offset(x, y, z);
                     Block block = level().getBlockState(p).getBlock();
@@ -376,6 +471,119 @@ public class ControlBotEntity extends PathfinderMob {
         }
 
         return best;
+    }
+
+    private boolean canReachBlock(BlockPos pos) {
+        double dx = pos.getX() + 0.5D - getX();
+        double dy = pos.getY() + 0.5D - (getY() + getBbHeight() * 0.65D);
+        double dz = pos.getZ() + 0.5D - getZ();
+        return dx * dx + dy * dy + dz * dz <= 4.7D * 4.7D;
+    }
+
+    private void startOrContinueBreaking(BlockPos pos) {
+        BlockState state = level().getBlockState(pos);
+
+        if (state.isAir() || state.getDestroySpeed(level(), pos) < 0.0F) {
+            cancelBreaking();
+            return;
+        }
+
+        if (breakingTarget == null || !breakingTarget.equals(pos)) {
+            breakingTarget = pos.immutable();
+            breakingTicks = 0;
+            breakingRequired = calculateBreakTime(state);
+        }
+
+        breakingTicks++;
+
+        if (breakingTicks >= breakingRequired) {
+            boolean destroyed = level().destroyBlock(pos, true, this);
+
+            if (destroyed) {
+                mineProgress++;
+                prepareWoodMaterials();
+                collectNearbyItems();
+                equipArmorFromInventory();
+            }
+
+            cancelBreaking();
+        } else {
+            int seconds = Math.max(1, (breakingRequired - breakingTicks + 19) / 20);
+            setStatus("Ломаю блок • " + seconds + "с");
+        }
+    }
+
+    private int calculateBreakTime(BlockState state) {
+        float hardness = state.getDestroySpeed(level(), breakingTarget == null ? blockPosition() : breakingTarget);
+
+        if (hardness < 0.0F) {
+            return Integer.MAX_VALUE;
+        }
+
+        float speed = 1.0F;
+
+        if (state.is(BlockTags.LOGS) && hasItem(Items.WOODEN_AXE)) {
+            speed = 2.0F;
+        }
+
+        if (!state.is(BlockTags.LOGS) && state.is(BlockTags.MINEABLE_PICKAXE) && hasAnyPickaxe()) {
+            speed = 2.0F;
+        }
+
+        return Math.max(5, Math.round(hardness * 20.0F / speed));
+    }
+
+    private void cancelBreaking() {
+        breakingTarget = null;
+        breakingTicks = 0;
+        breakingRequired = 0;
+    }
+
+    private boolean hasAnyPickaxe() {
+        return hasItem(Items.WOODEN_PICKAXE) || hasItem(Items.STONE_PICKAXE)
+                || hasItem(Items.IRON_PICKAXE) || hasItem(Items.DIAMOND_PICKAXE);
+    }
+
+    private int countPlanks() {
+        return countItem(Items.OAK_PLANKS);
+    }
+
+    private int countItem(Item item) {
+        int count = 0;
+
+        for (int i = 0; i < botInventory.getContainerSize(); i++) {
+            if (botInventory.getItem(i).is(item)) {
+                count += botInventory.getItem(i).getCount();
+            }
+        }
+
+        return count;
+    }
+
+    private boolean hasItem(Item item) {
+        return countItem(item) > 0;
+    }
+
+    private boolean takeItem(Item item, int amount) {
+        int remaining = amount;
+
+        for (int i = 0; i < botInventory.getContainerSize() && remaining > 0; i++) {
+            ItemStack stack = botInventory.getItem(i);
+
+            if (!stack.is(item)) {
+                continue;
+            }
+
+            int removed = Math.min(remaining, stack.getCount());
+            stack.shrink(removed);
+            remaining -= removed;
+
+            if (stack.isEmpty()) {
+                botInventory.setItem(i, ItemStack.EMPTY);
+            }
+        }
+
+        return remaining == 0;
     }
 
     private void moveNear(BlockPos pos) {
@@ -403,16 +611,36 @@ public class ControlBotEntity extends PathfinderMob {
         setCustomNameVisible(true);
     }
 
-    public int getWood() {
-        return wood;
+    @Override
+    protected void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putInt("BotState", state.ordinal());
+        tag.putInt("MineProgress", mineProgress);
+        tag.putInt("BuildIndex", buildIndex);
+
+        CompoundTag home = new CompoundTag();
+        home.putInt("X", homeOrigin.getX());
+        home.putInt("Y", homeOrigin.getY());
+        home.putInt("Z", homeOrigin.getZ());
+        tag.put("Home", home);
     }
 
-    public int getStone() {
-        return stone;
-    }
+    @Override
+    protected void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
 
-    public int getOres() {
-        return ores;
+        int ordinal = tag.getInt("BotState");
+        if (ordinal >= 0 && ordinal < BrainState.values().length) {
+            state = BrainState.values()[ordinal];
+        }
+
+        mineProgress = tag.getInt("MineProgress");
+        buildIndex = tag.getInt("BuildIndex");
+
+        if (tag.contains("Home")) {
+            CompoundTag home = tag.getCompound("Home");
+            homeOrigin = new BlockPos(home.getInt("X"), home.getInt("Y"), home.getInt("Z"));
+        }
     }
 
     public void faceNearestPlayer() {
