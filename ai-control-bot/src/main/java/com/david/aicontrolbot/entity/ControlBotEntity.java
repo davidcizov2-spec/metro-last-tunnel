@@ -481,6 +481,19 @@ public class ControlBotEntity extends PathfinderMob {
         return dx * dx + dy * dy + dz * dz <= 4.7D * 4.7D;
     }
 
+    private void tickBreaking() {
+        if (breakingTarget == null) {
+            return;
+        }
+
+        if (!canReachBlock(breakingTarget)) {
+            moveNear(breakingTarget);
+            return;
+        }
+
+        startOrContinueBreaking(breakingTarget);
+    }
+
     private void startOrContinueBreaking(BlockPos pos) {
         BlockState state = level().getBlockState(pos);
 
@@ -527,7 +540,7 @@ public class ControlBotEntity extends PathfinderMob {
             speed = 2.0F;
         }
 
-        if (!state.is(BlockTags.LOGS) && state.is(BlockTags.MINEABLE_PICKAXE) && hasAnyPickaxe()) {
+        if (!state.is(BlockTags.LOGS) && hasAnyPickaxe()) {
             speed = 2.0F;
         }
 
@@ -613,7 +626,7 @@ public class ControlBotEntity extends PathfinderMob {
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag tag) {
+    public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putInt("BotState", state.ordinal());
         tag.putInt("MineProgress", mineProgress);
@@ -627,7 +640,7 @@ public class ControlBotEntity extends PathfinderMob {
     }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag tag) {
+    public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
 
         int ordinal = tag.getInt("BotState");
