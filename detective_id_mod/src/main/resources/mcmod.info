@@ -1,0 +1,15 @@
+[
+  {
+    "modid": "detective_id",
+    "name": "Detective ID Animation",
+    "description": "Animated detective identification card for first-person Minecraft 1.12.2.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "authorList": ["David"],
+    "credits": "",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
+]

@@ -1,0 +1,65 @@
+name: Build Detective ID 1.12.2
+
+on:
+  push:
+    branches:
+      - detective-id-animation
+    paths:
+      - "detective_id_mod/**"
+      - ".github/workflows/build-detective-id.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "detective_id_mod/**"
+      - ".github/workflows/build-detective-id.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+
+      - name: Prepare Forge 1.12.2 MDK
+        shell: bash
+        run: |
+          set -e
+          mkdir -p /tmp/forge
+          curl -L --retry 5 --retry-delay 3             -o /tmp/forge/forge-mdk.zip             https://maven.minecraftforge.net/net/minecraftforge/forge/1.12.2-14.23.5.2859/forge-1.12.2-14.23.5.2859-mdk.zip
+          unzip -q /tmp/forge/forge-mdk.zip -d /tmp/forge/mdk
+          cp -r /tmp/forge/mdk/gradle detective_id_mod/
+          cp /tmp/forge/mdk/gradlew detective_id_mod/
+          cp /tmp/forge/mdk/gradlew.bat detective_id_mod/
+          cp /tmp/forge/mdk/gradle.properties detective_id_mod/ 2>/dev/null || true
+
+      - name: Build and reobfuscate
+        working-directory: detective_id_mod
+        run: chmod +x gradlew && ./gradlew --no-daemon clean build
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: detective-id-1.12.2
+          path: detective_id_mod/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Publish JAR release asset
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -e
+          JAR="$(ls detective_id_mod/build/libs/*.jar | head -n 1)"
+          gh release delete detective-id-1.12.2 --yes --cleanup-tag || true
+          gh release create detective-id-1.12.2 "$JAR"             --target detective-id-animation             --title "Detective ID Animation 1.12.2"             --notes "Forge 1.12.2 detective ID animation mod. Built and reobfuscated from source."
