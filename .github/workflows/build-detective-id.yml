@@ -12,6 +12,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,9 +40,19 @@ jobs:
         working-directory: detective_id_mod
         run: chmod +x gradlew && ./gradlew --no-daemon build
 
-      - name: Upload jar
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: detective-id-1.12.2
           path: detective_id_mod/build/libs/*.jar
           if-no-files-found: error
+
+      - name: Publish JAR release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -e
+          JAR="$(ls detective_id_mod/build/libs/*.jar | head -n 1)"
+          gh release delete detective-id-1.12.2 --yes --cleanup-tag || true
+          gh release create detective-id-1.12.2 "$JAR"             --target detective-id-animation             --title "Detective ID Animation 1.12.2"             --notes "Forge 1.12.2 detective ID animation mod. Built automatically from the detective-id-animation branch."
