@@ -1,7 +1,8 @@
 buildscript {
     repositories {
-        jcenter()
         maven { url = 'https://maven.minecraftforge.net' }
+        mavenCentral()
+        jcenter()
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
@@ -10,14 +11,14 @@ buildscript {
 
 apply plugin: 'net.minecraftforge.gradle.forge'
 
-version = '1.0.0'
+version = '1.0.2'
 group = 'com.david.detectiveid'
 archivesBaseName = 'detective_id_1.12.2'
 
 sourceCompatibility = targetCompatibility = '1.8'
 
 minecraft {
-    version = '1.12.2-14.23.5.2859'
+    version = '1.12.2-14.23.5.2854'
     runDir = 'run'
     mappings = 'snapshot_20171003'
 }
